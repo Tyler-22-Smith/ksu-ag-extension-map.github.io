@@ -1,6 +1,13 @@
-name,latitude,longitude,start_year,end_year,category,description
-Riley County 4-H Fair,39.1836,-96.5717,1950,2025,Youth,Annual youth fair
-Crop Production Workshop,38.8403,-97.6114,1985,2025,Agriculture,Producer training
-Community Leadership Program,37.6872,-97.3301,1995,2025,Community,Leadership development
-Historic Extension Office,38.9717,-95.2353,1914,1970,Administration,Original office
-Family Consumer Sciences Expo,39.1142,-94.6275,1975,2025,Family Sciences,Educational outreach
+id,name,county,latitude,longitude,start_year,end_year,category,description,photos
+
+1,Riley County 4-H Fair,Riley,39.1836,-96.5717,1950,2025,youth,"Annual county fair","fair1.jpg|fair2.jpg"
+
+2,Crop Production Workshop,Saline,38.8403,-97.6114,1985,2025,crop,"Crop management workshop","workshop1.jpg|workshop2.jpg"
+
+3,Livestock Demonstration,Butler,37.6872,-97.3301,1970,2025,livestock,"Regional livestock event","livestock1.jpg"
+
+4,Farmers Market Initiative,Shawnee,39.0489,-95.6780,2005,2025,farmersmarket,"Local food systems project","market1.jpg"
+
+5,Wildlife Habitat Day,Geary,39.0286,-96.8314,1990,2025,wildlife,"Habitat education event","wildlife1.jpg"
+
+6,Agricultural Economics Seminar,Douglas,38.9717,-95.2353,1980,2025,ageconomics,"Extension economics seminar","econ1.jpg"
