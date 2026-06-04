@@ -290,3 +290,28 @@ searchInput.addEventListener("input", renderMap);
 countyFilter.addEventListener("change", renderMap);
 categoryFilter.addEventListener("change", renderMap);
 yearSlider.addEventListener("input", renderMap);
+
+// ============================
+// MOBILE MENU TOGGLE
+// ============================
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const toggle = document.getElementById("menuToggle");
+    const sidebar = document.getElementById("sidebar");
+
+    if (toggle && sidebar) {
+
+        toggle.addEventListener("click", () => {
+            sidebar.classList.toggle("open");
+        });
+
+        // Close sidebar when clicking map (mobile UX improvement)
+        document.getElementById("map")
+            .addEventListener("click", () => {
+                sidebar.classList.remove("open");
+            });
+
+    }
+
+});
