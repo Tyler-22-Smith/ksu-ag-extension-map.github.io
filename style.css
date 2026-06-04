@@ -51,17 +51,26 @@ input, select {
 }
 
 /* LEGEND */
-#legend {
-    margin-top: 10px;
-    padding: 10px;
-    background: white;
-    border: 1px solid #ccc;
+#legend img {
+    width: 34px;          /* increased from 20px */
+    height: 34px;         /* keeps consistent sizing */
+    margin-right: 10px;
+    vertical-align: middle;
+    object-fit: contain;
 }
 
-#legend img {
-    width: 20px;
-    margin-right: 6px;
-    vertical-align: middle;
+/* improve spacing between rows */
+#legend div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+/* optional: make legend more readable */
+#legend {
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 /* PHOTO POPUP */
