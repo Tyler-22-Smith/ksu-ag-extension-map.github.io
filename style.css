@@ -52,8 +52,8 @@ input, select {
 
 /* LEGEND */
 #legend img {
-    width: 34px;          /* increased from 20px */
-    height: 34px;         /* keeps consistent sizing */
+    width: 100px;          /* increased from 20px */
+    height: 100px;         /* keeps consistent sizing */
     margin-right: 10px;
     vertical-align: middle;
     object-fit: contain;
