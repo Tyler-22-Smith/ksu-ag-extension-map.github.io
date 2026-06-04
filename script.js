@@ -145,7 +145,8 @@ return;
 
 if(
 county !== "all" &&
-row.county !== county
+row.county.trim().toLowerCase() !==
+county.trim().toLowerCase()
 )
 return;
 
@@ -176,8 +177,13 @@ target="_blank">
 
 }
 
+const categoryName =
+(row.category || "")
+.trim()
+.toLowerCase();
+
 const icon =
-icons[row.category.toLowerCase()]
+icons[categoryName]
 || icons.crop;
 
 const marker =
@@ -246,9 +252,9 @@ results.data;
 const categories =
 [
 ...new Set(
-allData.map(
-d=>d.category
-)
+allData
+.filter(d => d.category)
+.map(d => d.category.trim())
 )
 ];
 
@@ -269,9 +275,9 @@ categoryFilter.appendChild(option);
 const counties =
 [
 ...new Set(
-allData.map(
-d=>d.county
-)
+allData
+.filter(d => d.county)
+.map(d => d.county.trim())
 )
 ];
 
