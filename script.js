@@ -1,28 +1,31 @@
-// ===============================
+// =====================================
 // MAP INITIALIZATION
-// ===============================
+// =====================================
 
 const map = L.map("map").setView([38.5, -98.0], 7);
 
-const baseLayer = L.tileLayer(
+L.tileLayer(
     "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
         attribution: "© OpenStreetMap contributors"
     }
 ).addTo(map);
 
-const layerControl = L.control.layers().addTo(map);
+const layerControl =
+    L.control.layers().addTo(map);
 
-// ===============================
+// =====================================
 // MARKER CLUSTERING
-// ===============================
+// =====================================
 
-const markerCluster = L.markerClusterGroup();
+const markerCluster =
+    L.markerClusterGroup();
+
 map.addLayer(markerCluster);
 
-// ===============================
+// =====================================
 // ICONS
-// ===============================
+// =====================================
 
 const icons = {
 
@@ -58,14 +61,16 @@ const icons = {
 
 };
 
+// Default icon for missing/unknown categories
+
 const defaultIcon = L.icon({
-    iconUrl: "images/crop.svg",
+    iconUrl: "images/default.svg",
     iconSize: [36, 36]
 });
 
-// ===============================
+// =====================================
 // DOM REFERENCES
-// ===============================
+// =====================================
 
 const searchInput =
     document.getElementById("search");
@@ -85,16 +90,16 @@ const yearValue =
 const resultsDiv =
     document.getElementById("results");
 
-// ===============================
-// GLOBAL DATA
-// ===============================
+// =====================================
+// GLOBALS
+// =====================================
 
 let allData = [];
 let countyLayer;
 
-// ===============================
-// UTILITY FUNCTIONS
-// ===============================
+// =====================================
+// HELPERS
+// =====================================
 
 function clean(value) {
 
@@ -108,11 +113,19 @@ function clean(value) {
     return value
         .toString()
         .trim();
+
 }
 
-// ===============================
-// LOAD COUNTY BOUNDARIES
-// ===============================
+function safeLower(value) {
+
+    return clean(value)
+        .toLowerCase();
+
+}
+
+// =====================================
+// COUNTY LAYER
+// =====================================
 
 fetch("data/kansas_counties.geojson")
 .then(response => response.json())
@@ -121,7 +134,7 @@ fetch("data/kansas_counties.geojson")
     countyLayer = L.geoJSON(data, {
 
         style: {
-            color: "#444",
+            color: "#555",
             weight: 1,
             fillOpacity: 0
         },
@@ -155,15 +168,15 @@ fetch("data/kansas_counties.geojson")
 .catch(error => {
 
     console.error(
-        "County layer failed to load:",
+        "County layer failed:",
         error
     );
 
 });
 
-// ===============================
-// MAIN MAP RENDER FUNCTION
-// ===============================
+// =====================================
+// RENDER MAP
+// =====================================
 
 function renderMap() {
 
@@ -172,16 +185,13 @@ function renderMap() {
     resultsDiv.innerHTML = "";
 
     const search =
-        clean(searchInput.value)
-        .toLowerCase();
+        safeLower(searchInput.value);
 
     const selectedCategory =
-        clean(categoryFilter.value)
-        .toLowerCase();
+        safeLower(categoryFilter.value);
 
     const selectedCounty =
-        clean(countyFilter.value)
-        .toLowerCase();
+        safeLower(countyFilter.value);
 
     const selectedYear =
         parseInt(yearSlider.value);
@@ -193,82 +203,110 @@ function renderMap() {
 
     allData.forEach(row => {
 
-        // ------------------------
-        // REQUIRED FIELDS
-        // ------------------------
-
-        if (
-            !clean(row.latitude) ||
-            !clean(row.longitude)
-        ) {
-            return;
-        }
+        // ============================
+        // REQUIRED FIELDS ONLY
+        // ============================
 
         const name =
             clean(row.name);
 
+        const latitude =
+            parseFloat(row.latitude);
+
+        const longitude =
+            parseFloat(row.longitude);
+
+        if (
+            !name ||
+            isNaN(latitude) ||
+            isNaN(longitude)
+        ) {
+            return;
+        }
+
+        // ============================
+        // OPTIONAL FIELDS
+        // ============================
+
         const county =
-            clean(row.county);
+            clean(row.county) ||
+            "Unspecified";
 
         const category =
-            clean(row.category);
+            clean(row.category) ||
+            "Unspecified";
 
         const description =
             clean(row.description);
 
+        const startYear =
+            clean(row.start_year);
+
+        const endYear =
+            clean(row.end_year);
+
         const start =
-            parseInt(
-                clean(row.start_year)
-            );
+            parseInt(startYear);
 
         const end =
-            parseInt(
-                clean(row.end_year)
-            );
+            parseInt(endYear);
+
+        // ============================
+        // YEAR FILTER
+        // Only apply if both years exist
+        // ============================
 
         if (
-            isNaN(start) ||
-            isNaN(end)
+            !isNaN(start) &&
+            !isNaN(end)
         ) {
-            return;
+
+            if (
+                selectedYear < start ||
+                selectedYear > end
+            ) {
+                return;
+            }
+
         }
 
-        // ------------------------
-        // FILTERS
-        // ------------------------
-
-        if (
-            selectedYear < start ||
-            selectedYear > end
-        ) {
-            return;
-        }
-
-        if (
-            selectedCategory !== "all" &&
-            category.toLowerCase() !== selectedCategory
-        ) {
-            return;
-        }
+        // ============================
+        // COUNTY FILTER
+        // ============================
 
         if (
             selectedCounty !== "all" &&
-            county.toLowerCase() !== selectedCounty
+            safeLower(county) !== selectedCounty
         ) {
             return;
         }
+
+        // ============================
+        // CATEGORY FILTER
+        // ============================
+
+        if (
+            selectedCategory !== "all" &&
+            safeLower(category) !== selectedCategory
+        ) {
+            return;
+        }
+
+        // ============================
+        // SEARCH FILTER
+        // ============================
 
         if (
             search &&
-            !name.toLowerCase()
-            .includes(search)
+            !safeLower(name)
+                .includes(search)
         ) {
             return;
         }
 
-        // ------------------------
+        // ============================
         // PHOTO GALLERY
-        // ------------------------
+        // ============================
 
         let galleryHtml = "";
 
@@ -297,27 +335,26 @@ function renderMap() {
 
         }
 
-        // ------------------------
-        // CATEGORY ICON
-        // ------------------------
+        // ============================
+        // ICON SELECTION
+        // ============================
 
         const categoryKey =
-            category
-            .toLowerCase()
-            .replace(/\s+/g, "");
+            safeLower(category)
+                .replace(/\s+/g, "");
 
         const icon =
             icons[categoryKey] ||
             defaultIcon;
 
-        // ------------------------
-        // CREATE MARKER
-        // ------------------------
+        // ============================
+        // MARKER
+        // ============================
 
         const marker = L.marker(
             [
-                parseFloat(row.latitude),
-                parseFloat(row.longitude)
+                latitude,
+                longitude
             ],
             {
                 icon: icon
@@ -334,7 +371,10 @@ function renderMap() {
             ${category}<br>
 
             <b>Years:</b>
-            ${start} - ${end}<br><br>
+            ${startYear || "Unspecified"}
+            -
+            ${endYear || "Unspecified"}
+            <br><br>
 
             ${description}
 
@@ -347,20 +387,25 @@ function renderMap() {
             marker
         );
 
-        // ------------------------
-        // SIDEBAR RESULTS
-        // ------------------------
+        // ============================
+        // SIDEBAR RESULT
+        // ============================
 
         resultsDiv.innerHTML += `
             <div class="result-item">
 
                 <b>${name}</b><br>
 
+                County:
                 ${county}<br>
 
+                Category:
                 ${category}<br>
 
-                ${start} - ${end}
+                Years:
+                ${startYear || "Unspecified"}
+                -
+                ${endYear || "Unspecified"}
 
             </div>
         `;
@@ -376,9 +421,9 @@ function renderMap() {
 
 }
 
-// ===============================
+// =====================================
 // LOAD CSV
-// ===============================
+// =====================================
 
 Papa.parse(
     "data/events.csv",
@@ -408,20 +453,22 @@ Papa.parse(
                 allData.length
             );
 
-            // ------------------
+            // =====================
             // CATEGORY DROPDOWN
-            // ------------------
+            // =====================
 
             const categories = [
+
                 ...new Set(
+
                     allData
-                    .filter(
-                        d => clean(d.category)
+                    .map(d =>
+                        clean(d.category) ||
+                        "Unspecified"
                     )
-                    .map(
-                        d => clean(d.category)
-                    )
+
                 )
+
             ];
 
             categories.sort();
@@ -442,20 +489,22 @@ Papa.parse(
 
             });
 
-            // ------------------
+            // =====================
             // COUNTY DROPDOWN
-            // ------------------
+            // =====================
 
             const counties = [
+
                 ...new Set(
+
                     allData
-                    .filter(
-                        d => clean(d.county)
+                    .map(d =>
+                        clean(d.county) ||
+                        "Unspecified"
                     )
-                    .map(
-                        d => clean(d.county)
-                    )
+
                 )
+
             ];
 
             counties.sort();
@@ -495,9 +544,9 @@ Papa.parse(
     }
 );
 
-// ===============================
+// =====================================
 // EVENT LISTENERS
-// ===============================
+// =====================================
 
 searchInput.addEventListener(
     "input",
