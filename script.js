@@ -1,322 +1,520 @@
-const map = L.map("map").setView([38.5,-98.0],7);
+// ===============================
+// MAP INITIALIZATION
+// ===============================
+
+const map = L.map("map").setView([38.5, -98.0], 7);
 
 const baseLayer = L.tileLayer(
-"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-{
-attribution:"© OpenStreetMap contributors"
-}
+    "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+        attribution: "© OpenStreetMap contributors"
+    }
 ).addTo(map);
 
-const layerControl =
-L.control.layers().addTo(map);
+const layerControl = L.control.layers().addTo(map);
 
-let allData = [];
+// ===============================
+// MARKER CLUSTERING
+// ===============================
 
-const markerCluster =
-L.markerClusterGroup();
-
+const markerCluster = L.markerClusterGroup();
 map.addLayer(markerCluster);
+
+// ===============================
+// ICONS
+// ===============================
 
 const icons = {
 
-wildlife:L.icon({
-iconUrl:"images/wildlife.svg",
-iconSize:[36,36]
-}),
+    wildlife: L.icon({
+        iconUrl: "images/wildlife.svg",
+        iconSize: [36, 36]
+    }),
 
-crop:L.icon({
-iconUrl:"images/crop.svg",
-iconSize:[36,36]
-}),
+    crop: L.icon({
+        iconUrl: "images/crop.svg",
+        iconSize: [36, 36]
+    }),
 
-livestock:L.icon({
-iconUrl:"images/livestock.svg",
-iconSize:[36,36]
-}),
+    livestock: L.icon({
+        iconUrl: "images/livestock.svg",
+        iconSize: [36, 36]
+    }),
 
-farmersmarket:L.icon({
-iconUrl:"images/farmersmarket.svg",
-iconSize:[36,36]
-}),
+    farmersmarket: L.icon({
+        iconUrl: "images/farmersmarket.svg",
+        iconSize: [36, 36]
+    }),
 
-youth:L.icon({
-iconUrl:"images/youth.svg",
-iconSize:[36,36]
-}),
+    youth: L.icon({
+        iconUrl: "images/youth.svg",
+        iconSize: [36, 36]
+    }),
 
-ageconomics:L.icon({
-iconUrl:"images/ageconomics.svg",
-iconSize:[36,36]
-})
+    ageconomics: L.icon({
+        iconUrl: "images/ageconomics.svg",
+        iconSize: [36, 36]
+    })
 
 };
 
+const defaultIcon = L.icon({
+    iconUrl: "images/crop.svg",
+    iconSize: [36, 36]
+});
+
+// ===============================
+// DOM REFERENCES
+// ===============================
+
 const searchInput =
-document.getElementById("search");
+    document.getElementById("search");
 
 const categoryFilter =
-document.getElementById("categoryFilter");
+    document.getElementById("categoryFilter");
 
 const countyFilter =
-document.getElementById("countyFilter");
+    document.getElementById("countyFilter");
 
 const yearSlider =
-document.getElementById("yearSlider");
+    document.getElementById("yearSlider");
 
 const yearValue =
-document.getElementById("yearValue");
+    document.getElementById("yearValue");
 
+const resultsDiv =
+    document.getElementById("results");
+
+// ===============================
+// GLOBAL DATA
+// ===============================
+
+let allData = [];
 let countyLayer;
+
+// ===============================
+// UTILITY FUNCTIONS
+// ===============================
+
+function clean(value) {
+
+    if (
+        value === undefined ||
+        value === null
+    ) {
+        return "";
+    }
+
+    return value
+        .toString()
+        .trim();
+}
+
+// ===============================
+// LOAD COUNTY BOUNDARIES
+// ===============================
 
 fetch("data/kansas_counties.geojson")
 .then(response => response.json())
 .then(data => {
 
-countyLayer = L.geoJSON(data,{
+    countyLayer = L.geoJSON(data, {
 
-style:{
-color:"#444",
-weight:1,
-fillOpacity:0
-},
+        style: {
+            color: "#444",
+            weight: 1,
+            fillOpacity: 0
+        },
 
-onEachFeature:function(feature,layer){
+        onEachFeature: function(feature, layer) {
 
-layer.bindTooltip(
-feature.properties.COUNTY_NAME
-);
+            const countyName =
+                feature.properties.COUNTY_NAME ||
+                feature.properties.NAME ||
+                "County";
 
-}
+            layer.bindTooltip(
+                countyName,
+                {
+                    sticky: true
+                }
+            );
 
-});
+        }
 
-countyLayer.addTo(map);
+    });
 
-layerControl.addOverlay(
-countyLayer,
-"County Boundaries"
-);
+    countyLayer.addTo(map);
 
-});
+    layerControl.addOverlay(
+        countyLayer,
+        "Kansas Counties"
+    );
 
-function renderMap(){
+})
+.catch(error => {
 
-markerCluster.clearLayers();
-
-const search =
-searchInput.value.toLowerCase();
-
-const category =
-categoryFilter.value;
-
-const county =
-countyFilter.value;
-
-const selectedYear =
-parseInt(yearSlider.value);
-
-yearValue.innerText =
-selectedYear;
-
-const results =
-document.getElementById("results");
-
-results.innerHTML = "";
-
-allData.forEach(row=>{
-
-const start =
-parseInt(row.start_year);
-
-const end =
-parseInt(row.end_year);
-
-if(selectedYear < start)
-return;
-
-if(selectedYear > end)
-return;
-
-if(
-category !== "all" &&
-row.category !== category
-)
-return;
-
-if(
-county !== "all" &&
-row.county.trim().toLowerCase() !==
-county.trim().toLowerCase()
-)
-return;
-
-if(
-search &&
-!row.name.toLowerCase().includes(search)
-)
-return;
-
-let galleryHtml = "";
-
-if(row.photos){
-
-row.photos
-.split("|")
-.forEach(photo=>{
-
-galleryHtml += `
-<a href="photos/${photo}"
-target="_blank">
-
-<img src="photos/${photo}">
-
-</a>
-`;
+    console.error(
+        "County layer failed to load:",
+        error
+    );
 
 });
 
+// ===============================
+// MAIN MAP RENDER FUNCTION
+// ===============================
+
+function renderMap() {
+
+    markerCluster.clearLayers();
+
+    resultsDiv.innerHTML = "";
+
+    const search =
+        clean(searchInput.value)
+        .toLowerCase();
+
+    const selectedCategory =
+        clean(categoryFilter.value)
+        .toLowerCase();
+
+    const selectedCounty =
+        clean(countyFilter.value)
+        .toLowerCase();
+
+    const selectedYear =
+        parseInt(yearSlider.value);
+
+    yearValue.innerText =
+        selectedYear;
+
+    let visibleCount = 0;
+
+    allData.forEach(row => {
+
+        // ------------------------
+        // REQUIRED FIELDS
+        // ------------------------
+
+        if (
+            !clean(row.latitude) ||
+            !clean(row.longitude)
+        ) {
+            return;
+        }
+
+        const name =
+            clean(row.name);
+
+        const county =
+            clean(row.county);
+
+        const category =
+            clean(row.category);
+
+        const description =
+            clean(row.description);
+
+        const start =
+            parseInt(
+                clean(row.start_year)
+            );
+
+        const end =
+            parseInt(
+                clean(row.end_year)
+            );
+
+        if (
+            isNaN(start) ||
+            isNaN(end)
+        ) {
+            return;
+        }
+
+        // ------------------------
+        // FILTERS
+        // ------------------------
+
+        if (
+            selectedYear < start ||
+            selectedYear > end
+        ) {
+            return;
+        }
+
+        if (
+            selectedCategory !== "all" &&
+            category.toLowerCase() !== selectedCategory
+        ) {
+            return;
+        }
+
+        if (
+            selectedCounty !== "all" &&
+            county.toLowerCase() !== selectedCounty
+        ) {
+            return;
+        }
+
+        if (
+            search &&
+            !name.toLowerCase()
+            .includes(search)
+        ) {
+            return;
+        }
+
+        // ------------------------
+        // PHOTO GALLERY
+        // ------------------------
+
+        let galleryHtml = "";
+
+        const photoString =
+            clean(row.photos);
+
+        if (photoString) {
+
+            photoString
+            .split("|")
+            .forEach(photo => {
+
+                galleryHtml += `
+                    <a
+                        href="photos/${photo}"
+                        target="_blank">
+
+                        <img
+                            src="photos/${photo}"
+                            loading="lazy">
+
+                    </a>
+                `;
+
+            });
+
+        }
+
+        // ------------------------
+        // CATEGORY ICON
+        // ------------------------
+
+        const categoryKey =
+            category
+            .toLowerCase()
+            .replace(/\s+/g, "");
+
+        const icon =
+            icons[categoryKey] ||
+            defaultIcon;
+
+        // ------------------------
+        // CREATE MARKER
+        // ------------------------
+
+        const marker = L.marker(
+            [
+                parseFloat(row.latitude),
+                parseFloat(row.longitude)
+            ],
+            {
+                icon: icon
+            }
+        );
+
+        marker.bindPopup(`
+            <h3>${name}</h3>
+
+            <b>County:</b>
+            ${county}<br>
+
+            <b>Category:</b>
+            ${category}<br>
+
+            <b>Years:</b>
+            ${start} - ${end}<br><br>
+
+            ${description}
+
+            <div class="gallery">
+                ${galleryHtml}
+            </div>
+        `);
+
+        markerCluster.addLayer(
+            marker
+        );
+
+        // ------------------------
+        // SIDEBAR RESULTS
+        // ------------------------
+
+        resultsDiv.innerHTML += `
+            <div class="result-item">
+
+                <b>${name}</b><br>
+
+                ${county}<br>
+
+                ${category}<br>
+
+                ${start} - ${end}
+
+            </div>
+        `;
+
+        visibleCount++;
+
+    });
+
+    console.log(
+        "Markers Displayed:",
+        visibleCount
+    );
+
 }
 
-const categoryName =
-(row.category || "")
-.trim()
-.toLowerCase();
-
-const icon =
-icons[categoryName]
-|| icons.crop;
-
-const marker =
-L.marker(
-[
-parseFloat(row.latitude),
-parseFloat(row.longitude)
-],
-{
-icon:icon
-}
-);
-
-marker.bindPopup(`
-<h3>${row.name}</h3>
-
-<b>County:</b>
-${row.county}<br>
-
-<b>Category:</b>
-${row.category}<br>
-
-<b>Years:</b>
-${start}-${end}<br><br>
-
-${row.description}
-
-<div class="gallery">
-
-${galleryHtml}
-
-</div>
-`);
-
-markerCluster.addLayer(marker);
-
-results.innerHTML += `
-<div class="result-item">
-
-<b>${row.name}</b><br>
-
-${row.county}<br>
-
-${row.category}<br>
-
-${start}-${end}
-
-</div>
-`;
-
-});
-
-}
+// ===============================
+// LOAD CSV
+// ===============================
 
 Papa.parse(
-"data/events.csv",
-{
-download:true,
-header:true,
+    "data/events.csv",
+    {
 
-complete:function(results){
+        download: true,
 
-allData =
-results.data;
+        header: true,
 
-const categories =
-[
-...new Set(
-allData
-.filter(d => d.category)
-.map(d => d.category.trim())
-)
-];
+        skipEmptyLines: true,
 
-categories.sort();
+        complete: function(results) {
 
-categories.forEach(cat=>{
+            allData =
+                results.data.filter(row => {
 
-const option =
-document.createElement("option");
+                    return (
+                        clean(row.name) &&
+                        clean(row.latitude) &&
+                        clean(row.longitude)
+                    );
 
-option.value = cat;
-option.textContent = cat;
+                });
 
-categoryFilter.appendChild(option);
+            console.log(
+                "CSV Records Loaded:",
+                allData.length
+            );
 
-});
+            // ------------------
+            // CATEGORY DROPDOWN
+            // ------------------
 
-const counties =
-[
-...new Set(
-allData
-.filter(d => d.county)
-.map(d => d.county.trim())
-)
-];
+            const categories = [
+                ...new Set(
+                    allData
+                    .filter(
+                        d => clean(d.category)
+                    )
+                    .map(
+                        d => clean(d.category)
+                    )
+                )
+            ];
 
-counties.sort();
+            categories.sort();
 
-counties.forEach(county=>{
+            categories.forEach(cat => {
 
-const option =
-document.createElement("option");
+                const option =
+                    document.createElement(
+                        "option"
+                    );
 
-option.value = county;
-option.textContent = county;
+                option.value = cat;
+                option.textContent = cat;
 
-countyFilter.appendChild(option);
+                categoryFilter.appendChild(
+                    option
+                );
 
-});
+            });
 
-renderMap();
+            // ------------------
+            // COUNTY DROPDOWN
+            // ------------------
 
-}
-}
+            const counties = [
+                ...new Set(
+                    allData
+                    .filter(
+                        d => clean(d.county)
+                    )
+                    .map(
+                        d => clean(d.county)
+                    )
+                )
+            ];
+
+            counties.sort();
+
+            counties.forEach(county => {
+
+                const option =
+                    document.createElement(
+                        "option"
+                    );
+
+                option.value =
+                    county;
+
+                option.textContent =
+                    county;
+
+                countyFilter.appendChild(
+                    option
+                );
+
+            });
+
+            renderMap();
+
+        },
+
+        error: function(error) {
+
+            console.error(
+                "CSV failed to load:",
+                error
+            );
+
+        }
+
+    }
 );
 
+// ===============================
+// EVENT LISTENERS
+// ===============================
+
 searchInput.addEventListener(
-"input",
-renderMap
+    "input",
+    renderMap
 );
 
 categoryFilter.addEventListener(
-"change",
-renderMap
+    "change",
+    renderMap
 );
 
 countyFilter.addEventListener(
-"change",
-renderMap
+    "change",
+    renderMap
 );
 
 yearSlider.addEventListener(
-"input",
-renderMap
+    "input",
+    renderMap
 );
