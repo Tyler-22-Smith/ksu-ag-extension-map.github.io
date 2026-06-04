@@ -12,4 +12,4 @@ id,name,county,latitude,longitude,start_year,end_year,category,description,photo
 
 6,Agricultural Economics Seminar,Douglas,38.9717,-95.2353,1980,2025,ageconomics,"Extension economics seminar","econ1.jpg"
 
-7,TEST LINE,Clay,37.6872,-95.2353,"",1999,youth,"TEST"
+7,TEST LINE,Clay,37.6872,-95.2353,"",1999,youth,"TEST",
