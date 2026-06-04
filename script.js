@@ -1,31 +1,74 @@
-// =====================================
+// =====================================================
 // MAP INITIALIZATION
-// =====================================
+// =====================================================
 
 const map = L.map("map").setView([38.5, -98.0], 7);
 
-L.tileLayer(
+// =======================
+// BASEMAPS
+// =======================
+
+const osm = L.tileLayer(
     "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
-        attribution: "© OpenStreetMap contributors"
+        attribution: "© OpenStreetMap"
     }
-).addTo(map);
+);
 
-const layerControl =
-    L.control.layers().addTo(map);
+const cartoDark = L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    {
+        attribution: "© CARTO"
+    }
+);
 
-// =====================================
-// MARKER CLUSTERING
-// =====================================
+const cartoLight = L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    {
+        attribution: "© CARTO"
+    }
+);
 
-const markerCluster =
-    L.markerClusterGroup();
+const cartoNoLabels = L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+    {
+        attribution: "© CARTO"
+    }
+);
 
+const esriSatellite = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    {
+        attribution: "Esri"
+    }
+);
+
+osm.addTo(map);
+
+const baseMaps = {
+    "OpenStreetMap": osm,
+    "Satellite": esriSatellite,
+    "Dark": cartoDark,
+    "Light": cartoLight,
+    "No Labels": cartoNoLabels
+};
+
+// =====================================================
+// LAYER CONTROL
+// =====================================================
+
+const layerControl = L.control.layers(baseMaps, {}).addTo(map);
+
+// =====================================================
+// MARKER CLUSTER
+// =====================================================
+
+const markerCluster = L.markerClusterGroup();
 map.addLayer(markerCluster);
 
-// =====================================
+// =====================================================
 // ICONS
-// =====================================
+// =====================================================
 
 const icons = {
 
@@ -61,509 +104,231 @@ const icons = {
 
 };
 
-// Default icon for missing/unknown categories
-
 const defaultIcon = L.icon({
     iconUrl: "images/default.svg",
     iconSize: [36, 36]
 });
 
-// =====================================
-// DOM REFERENCES
-// =====================================
+// =====================================================
+// DOM ELEMENTS
+// =====================================================
 
-const searchInput =
-    document.getElementById("search");
+const searchInput = document.getElementById("search");
+const categoryFilter = document.getElementById("categoryFilter");
+const countyFilter = document.getElementById("countyFilter");
+const yearSlider = document.getElementById("yearSlider");
+const yearValue = document.getElementById("yearValue");
+const resultsDiv = document.getElementById("results");
 
-const categoryFilter =
-    document.getElementById("categoryFilter");
-
-const countyFilter =
-    document.getElementById("countyFilter");
-
-const yearSlider =
-    document.getElementById("yearSlider");
-
-const yearValue =
-    document.getElementById("yearValue");
-
-const resultsDiv =
-    document.getElementById("results");
-
-// =====================================
-// GLOBALS
-// =====================================
+// =====================================================
+// GLOBAL DATA
+// =====================================================
 
 let allData = [];
-let countyLayer;
+let markerRefs = []; // store markers for sidebar interaction
 
-// =====================================
-// HELPERS
-// =====================================
+// =====================================================
+// CLEANING HELPERS
+// =====================================================
 
 function clean(value) {
+    return value ? value.toString().trim() : "";
+}
 
-    if (
-        value === undefined ||
-        value === null
-    ) {
-        return "";
+function lower(value) {
+    return clean(value).toLowerCase();
+}
+
+// =====================================================
+// DETAILS PANEL
+// =====================================================
+
+function showDetails(row, lat, lon) {
+
+    let galleryHtml = "";
+
+    if (row.photos) {
+        row.photos.split("|").forEach(photo => {
+            galleryHtml += `
+                <img src="photos/${photo}"
+                     style="width:100%; margin-top:6px; border-radius:4px;">
+            `;
+        });
     }
 
-    return value
-        .toString()
-        .trim();
+    document.getElementById("detailsPanel").innerHTML = `
+        <h2>${clean(row.name)}</h2>
 
+        <p>${clean(row.description)}</p>
+
+        <b>County:</b> ${clean(row.county) || "Unspecified"}<br>
+        <b>Category:</b> ${clean(row.category) || "Unspecified"}<br>
+        <b>Years:</b> ${clean(row.start_year) || "?"} - ${clean(row.end_year) || "?"}
+
+        <div style="margin-top:10px;">
+            ${galleryHtml}
+        </div>
+    `;
+
+    map.setView([lat, lon], 12);
 }
 
-function safeLower(value) {
+// =====================================================
+// LEGEND TOGGLE
+// =====================================================
 
-    return clean(value)
-        .toLowerCase();
-
-}
-
-// =====================================
-// COUNTY LAYER
-// =====================================
-
-fetch("data/kansas_counties.geojson")
-.then(response => response.json())
-.then(data => {
-
-    countyLayer = L.geoJSON(data, {
-
-        style: {
-            color: "#555",
-            weight: 1,
-            fillOpacity: 0
-        },
-
-        onEachFeature: function(feature, layer) {
-
-            const countyName =
-                feature.properties.COUNTY_NAME ||
-                feature.properties.NAME ||
-                "County";
-
-            layer.bindTooltip(
-                countyName,
-                {
-                    sticky: true
-                }
-            );
-
-        }
-
-    });
-
-    countyLayer.addTo(map);
-
-    layerControl.addOverlay(
-        countyLayer,
-        "Kansas Counties"
-    );
-
-})
-.catch(error => {
-
-    console.error(
-        "County layer failed:",
-        error
-    );
-
+document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("toggleLegend");
+    if (btn) {
+        btn.addEventListener("click", () => {
+            const legend = document.getElementById("legend");
+            legend.style.display =
+                legend.style.display === "none"
+                    ? "block"
+                    : "none";
+        });
+    }
 });
 
-// =====================================
+// =====================================================
 // RENDER MAP
-// =====================================
+// =====================================================
 
 function renderMap() {
 
     markerCluster.clearLayers();
-
     resultsDiv.innerHTML = "";
+    markerRefs = [];
 
-    const search =
-        safeLower(searchInput.value);
+    const search = lower(searchInput.value);
+    const selectedCategory = lower(categoryFilter.value);
+    const selectedCounty = lower(countyFilter.value);
+    const selectedYear = parseInt(yearSlider.value);
 
-    const selectedCategory =
-        safeLower(categoryFilter.value);
+    yearValue.innerText = selectedYear;
 
-    const selectedCounty =
-        safeLower(countyFilter.value);
+    allData.forEach((row, index) => {
 
-    const selectedYear =
-        parseInt(yearSlider.value);
+        const name = clean(row.name);
+        const lat = parseFloat(row.latitude);
+        const lon = parseFloat(row.longitude);
 
-    yearValue.innerText =
-        selectedYear;
+        if (!name || isNaN(lat) || isNaN(lon)) return;
 
-    let visibleCount = 0;
+        const county = clean(row.county) || "Unspecified";
+        const category = clean(row.category) || "Unspecified";
 
-    allData.forEach(row => {
+        const start = parseInt(clean(row.start_year));
+        const end = parseInt(clean(row.end_year));
 
-        // ============================
-        // REQUIRED FIELDS ONLY
-        // ============================
-
-        const name =
-            clean(row.name);
-
-        const latitude =
-            parseFloat(row.latitude);
-
-        const longitude =
-            parseFloat(row.longitude);
-
-        if (
-            !name ||
-            isNaN(latitude) ||
-            isNaN(longitude)
-        ) {
-            return;
+        // YEAR FILTER (optional)
+        if (!isNaN(start) && !isNaN(end)) {
+            if (selectedYear < start || selectedYear > end) return;
         }
 
-        // ============================
-        // OPTIONAL FIELDS
-        // ============================
-
-        const county =
-            clean(row.county) ||
-            "Unspecified";
-
-        const category =
-            clean(row.category) ||
-            "Unspecified";
-
-        const description =
-            clean(row.description);
-
-        const startYear =
-            clean(row.start_year);
-
-        const endYear =
-            clean(row.end_year);
-
-        const start =
-            parseInt(startYear);
-
-        const end =
-            parseInt(endYear);
-
-        // ============================
-        // YEAR FILTER
-        // Only apply if both years exist
-        // ============================
-
-        if (
-            !isNaN(start) &&
-            !isNaN(end)
-        ) {
-
-            if (
-                selectedYear < start ||
-                selectedYear > end
-            ) {
-                return;
-            }
-
-        }
-
-        // ============================
-        // COUNTY FILTER
-        // ============================
-
-        if (
-            selectedCounty !== "all" &&
-            safeLower(county) !== selectedCounty
-        ) {
-            return;
-        }
-
-        // ============================
         // CATEGORY FILTER
-        // ============================
+        if (selectedCategory !== "all" && lower(category) !== selectedCategory) return;
 
-        if (
-            selectedCategory !== "all" &&
-            safeLower(category) !== selectedCategory
-        ) {
-            return;
-        }
+        // COUNTY FILTER
+        if (selectedCounty !== "all" && lower(county) !== selectedCounty) return;
 
-        // ============================
         // SEARCH FILTER
-        // ============================
+        if (search && !lower(name).includes(search)) return;
 
-        if (
-            search &&
-            !safeLower(name)
-                .includes(search)
-        ) {
-            return;
-        }
-
-        // ============================
-        // PHOTO GALLERY
-        // ============================
-
-        let galleryHtml = "";
-
-        const photoString =
-            clean(row.photos);
-
-        if (photoString) {
-
-            photoString
-            .split("|")
-            .forEach(photo => {
-
-                galleryHtml += `
-                    <a
-                        href="photos/${photo}"
-                        target="_blank">
-
-                        <img
-                            src="photos/${photo}"
-                            loading="lazy">
-
-                    </a>
-                `;
-
-            });
-
-        }
-
-        // ============================
         // ICON SELECTION
-        // ============================
+        const iconKey = lower(category).replace(/\s+/g, "");
+        const icon = icons[iconKey] || defaultIcon;
 
-        const categoryKey =
-            safeLower(category)
-                .replace(/\s+/g, "");
-
-        const icon =
-            icons[categoryKey] ||
-            defaultIcon;
-
-        // ============================
         // MARKER
-        // ============================
-
-        const marker = L.marker(
-            [
-                latitude,
-                longitude
-            ],
-            {
-                icon: icon
-            }
-        );
+        const marker = L.marker([lat, lon], { icon });
 
         marker.bindPopup(`
             <h3>${name}</h3>
-
-            <b>County:</b>
-            ${county}<br>
-
-            <b>Category:</b>
-            ${category}<br>
-
-            <b>Years:</b>
-            ${startYear || "Unspecified"}
-            -
-            ${endYear || "Unspecified"}
-            <br><br>
-
-            ${description}
-
-            <div class="gallery">
-                ${galleryHtml}
-            </div>
+            <b>County:</b> ${county}<br>
+            <b>Category:</b> ${category}<br>
+            <b>Years:</b> ${clean(row.start_year) || "Unspecified"} - ${clean(row.end_year) || "Unspecified"}
         `);
 
-        markerCluster.addLayer(
-            marker
-        );
+        markerCluster.addLayer(marker);
 
-        // ============================
-        // SIDEBAR RESULT
-        // ============================
+        markerRefs[index] = {
+            marker,
+            row,
+            lat,
+            lon
+        };
 
-        resultsDiv.innerHTML += `
-            <div class="result-item">
+        // SIDEBAR RESULT (CLICKABLE)
+        const item = document.createElement("div");
+        item.className = "result-item";
 
-                <b>${name}</b><br>
-
-                County:
-                ${county}<br>
-
-                Category:
-                ${category}<br>
-
-                Years:
-                ${startYear || "Unspecified"}
-                -
-                ${endYear || "Unspecified"}
-
-            </div>
+        item.innerHTML = `
+            <b>${name}</b><br>
+            ${county}<br>
+            ${category}<br>
+            ${clean(row.start_year) || "?"} - ${clean(row.end_year) || "?"}
         `;
 
-        visibleCount++;
+        item.addEventListener("click", () => {
+            marker.openPopup();
+            showDetails(row, lat, lon);
+        });
+
+        resultsDiv.appendChild(item);
 
     });
 
-    console.log(
-        "Markers Displayed:",
-        visibleCount
-    );
-
+    console.log("Markers Displayed:", markerCluster.getLayers().length);
 }
 
-// =====================================
+// =====================================================
 // LOAD CSV
-// =====================================
+// =====================================================
 
-Papa.parse(
-    "data/events.csv",
-    {
+Papa.parse("data/events.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
 
-        download: true,
+    complete: function (results) {
 
-        header: true,
+        allData = results.data.filter(r =>
+            clean(r.name) &&
+            r.latitude &&
+            r.longitude
+        );
 
-        skipEmptyLines: true,
+        // CATEGORY DROPDOWN
+        const categories = [...new Set(allData.map(d => clean(d.category) || "Unspecified"))];
+        categories.sort();
 
-        complete: function(results) {
+        categories.forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = c;
+            opt.textContent = c;
+            categoryFilter.appendChild(opt);
+        });
 
-            allData =
-                results.data.filter(row => {
+        // COUNTY DROPDOWN
+        const counties = [...new Set(allData.map(d => clean(d.county) || "Unspecified"))];
+        counties.sort();
 
-                    return (
-                        clean(row.name) &&
-                        clean(row.latitude) &&
-                        clean(row.longitude)
-                    );
+        counties.forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = c;
+            opt.textContent = c;
+            countyFilter.appendChild(opt);
+        });
 
-                });
-
-            console.log(
-                "CSV Records Loaded:",
-                allData.length
-            );
-
-            // =====================
-            // CATEGORY DROPDOWN
-            // =====================
-
-            const categories = [
-
-                ...new Set(
-
-                    allData
-                    .map(d =>
-                        clean(d.category) ||
-                        "Unspecified"
-                    )
-
-                )
-
-            ];
-
-            categories.sort();
-
-            categories.forEach(cat => {
-
-                const option =
-                    document.createElement(
-                        "option"
-                    );
-
-                option.value = cat;
-                option.textContent = cat;
-
-                categoryFilter.appendChild(
-                    option
-                );
-
-            });
-
-            // =====================
-            // COUNTY DROPDOWN
-            // =====================
-
-            const counties = [
-
-                ...new Set(
-
-                    allData
-                    .map(d =>
-                        clean(d.county) ||
-                        "Unspecified"
-                    )
-
-                )
-
-            ];
-
-            counties.sort();
-
-            counties.forEach(county => {
-
-                const option =
-                    document.createElement(
-                        "option"
-                    );
-
-                option.value =
-                    county;
-
-                option.textContent =
-                    county;
-
-                countyFilter.appendChild(
-                    option
-                );
-
-            });
-
-            renderMap();
-
-        },
-
-        error: function(error) {
-
-            console.error(
-                "CSV failed to load:",
-                error
-            );
-
-        }
-
+        renderMap();
     }
-);
+});
 
-// =====================================
+// =====================================================
 // EVENT LISTENERS
-// =====================================
+// =====================================================
 
-searchInput.addEventListener(
-    "input",
-    renderMap
-);
-
-categoryFilter.addEventListener(
-    "change",
-    renderMap
-);
-
-countyFilter.addEventListener(
-    "change",
-    renderMap
-);
-
-yearSlider.addEventListener(
-    "input",
-    renderMap
-);
+searchInput.addEventListener("input", renderMap);
+categoryFilter.addEventListener("change", renderMap);
+countyFilter.addEventListener("change", renderMap);
+yearSlider.addEventListener("input", renderMap);
