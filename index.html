@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>University Extension History Map</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div id="sidebar">
+
+<h1>Extension History Map</h1>
+
+<input
+id="search"
+type="text"
+placeholder="Search events..."
+>
+
+<select id="categoryFilter">
+<option value="all">All Categories</option>
+</select>
+
+<label>
+Year:
+<span id="yearValue">2025</span>
+</label>
+
+<input
+type="range"
+id="yearSlider"
+min="1900"
+max="2025"
+value="2025"
+>
+
+<div id="results"></div>
+
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script src="script.js"></script>
+
+</body>
+</html>
